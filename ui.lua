@@ -1,12 +1,19 @@
-local MacLib = { Options = {}, Folder = "Maclib" }
+local MacLib = { 
+	Options = {}, 
+	Folder = "Maclib", 
+	GetService = function(service)
+		return cloneref and cloneref(game:GetService(service)) or game:GetService(service)
+	end
+}
 
 --// Services
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-local ContentProvider = game:GetService("ContentProvider")
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
+local TweenService = MacLib.GetService("TweenService")
+local RunService = MacLib.GetService("RunService")
+local HttpService = MacLib.GetService("HttpService")
+local ContentProvider = MacLib.GetService("ContentProvider")
+local UserInputService = MacLib.GetService("UserInputService")
+local Lighting = MacLib.GetService("Lighting")
+local Players = MacLib.GetService("Players")
 
 --// Variables
 local isStudio = RunService:IsStudio()
@@ -39,6 +46,22 @@ local assets = {
 }
 
 --// Functions
+local function GetGui()
+	local newGui = Instance.new("ScreenGui")
+	newGui.ScreenInsets = Enum.ScreenInsets.None
+	newGui.ResetOnSpawn = false
+	newGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	newGui.DisplayOrder = 2147483647
+
+	local parent = RunService:IsStudio() 
+		and LocalPlayer:FindFirstChild("PlayerGui")
+		or (gethui and gethui())
+		or (cloneref and cloneref(MacLib.GetService("CoreGui")) or MacLib.GetService("CoreGui"))
+
+	newGui.Parent = parent
+	return newGui
+end
+
 local function Tween(instance, tweeninfo, propertytable)
 	return TweenService:Create(instance, tweeninfo, propertytable)
 end
@@ -52,14 +75,7 @@ function MacLib:Window(Settings)
 		acrylicBlur = true
 	end
 
-	local macLib = Instance.new("ScreenGui")
-	macLib.Name = "MacLib"
-	macLib.ResetOnSpawn = false
-	macLib.DisplayOrder = 100
-	macLib.IgnoreGuiInset = true
-	macLib.ScreenInsets = Enum.ScreenInsets.None
-	macLib.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	macLib.Parent = (isStudio and LocalPlayer.PlayerGui) or game:GetService("CoreGui")
+	local macLib = GetGui()
 
 	local notifications = Instance.new("Frame")
 	notifications.Name = "Notifications"
@@ -132,7 +148,7 @@ function MacLib:Window(Settings)
 	divider.Position = UDim2.fromScale(1, 0)
 	divider.Size = UDim2.new(0, 1, 1, 0)
 	divider.Parent = sidebar
-	
+
 	local dividerInteract = Instance.new("TextButton")
 	dividerInteract.Name = "DividerInteract"
 	dividerInteract.AnchorPoint = Vector2.new(0.5, 0)
@@ -633,14 +649,14 @@ function MacLib:Window(Settings)
 	content.BorderSizePixel = 0
 	content.Position = UDim2.fromScale(1, 4.69e-08)
 	content.Size = UDim2.new(0, (base.AbsoluteSize.X - sidebar.AbsoluteSize.X), 1, 0)
-	
+
 	local resizingContent = false
 	local defaultSidebarWidth = sidebar.AbsoluteSize.X
 	local initialMouseX, initialSidebarWidth
 	local snapRange = 20
 	local minSidebarWidth = 107
 	local maxSidebarWidth = base.AbsoluteSize.X - minSidebarWidth
-	
+
 	local TweenSettings = {
 		DefaultTransparency = 0.9,
 		HoverTransparency = 0.85,
@@ -954,7 +970,7 @@ function MacLib:Window(Settings)
 
 	local BlurTarget = base
 
-	local HS = game:GetService('HttpService')
+	local HS = HttpService
 	local camera = workspace.CurrentCamera
 	local MTREL = "Glass"
 	local binds = {}
@@ -962,7 +978,7 @@ function MacLib:Window(Settings)
 
 	local DepthOfField
 
-	for _,v in pairs(game:GetService("Lighting"):GetChildren()) do
+	for _,v in pairs(Lighting:GetChildren()) do
 		if not v:IsA("DepthOfFieldEffect") and v:HasTag(".") then
 			DepthOfField = Instance.new('DepthOfFieldEffect')
 			DepthOfField.FarIntensity = 0
@@ -1000,7 +1016,7 @@ function MacLib:Window(Settings)
 		end
 		local continue = IsNotNaN(camera:ScreenPointToRay(0,0).Origin.x)
 		while not continue do
-			RunService.RenderStepped:wait()
+			RunService.RenderStepped:Wait()
 			continue = IsNotNaN(camera:ScreenPointToRay(0,0).Origin.x)
 		end
 	end
@@ -1128,7 +1144,7 @@ function MacLib:Window(Settings)
 			return
 		end
 		if not DepthOfField.Parent then
-			DepthOfField.Parent = game:GetService("Lighting")
+			DepthOfField.Parent = Lighting
 		end
 		DepthOfField.Enabled = true
 		local properties = {
@@ -1175,7 +1191,7 @@ function MacLib:Window(Settings)
 
 	UpdateOrientation(true)
 
-	RunService.RenderStepped:connect(UpdateOrientation)
+	RunService.RenderStepped:Connect(UpdateOrientation)
 
 	function WindowFunctions:GlobalSetting(Settings)
 		hasGlobalSetting = true
@@ -1407,9 +1423,9 @@ function MacLib:Window(Settings)
 			tabSwitcherUIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 			tabSwitcherUIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 			tabSwitcherUIListLayout.Parent = tabSwitcher
-			
+
 			local tabImage
-			
+
 			if Settings.Image then
 				tabImage = Instance.new("ImageLabel")
 				tabImage.Name = "TabImage"
@@ -1668,7 +1684,7 @@ function MacLib:Window(Settings)
 					function ButtonFunctions:SetVisibility(State)
 						button.Visible = State
 					end
-					
+
 					if Flag then
 						MacLib.Options[Flag] = ButtonFunctions
 					end
@@ -1751,13 +1767,15 @@ function MacLib:Window(Settings)
 					local togglerHeadTransparency = {Enabled = 0, Disabled = 0.85}
 
 					local TweenSettings = {
-						Info = TweenInfo.new(0.2, Enum.EasingStyle.Sine),
+						Info = TweenInfo.new(0.15, Enum.EasingStyle.Quad),
 
 						EnabledPosition = UDim2.new(1, 0, 0.5, 0),
 						DisabledPosition = UDim2.new(0.5, 0, 0.5, 0),
 					}
 
-					local function ToggleState(State)
+					local togglebool = ToggleFunctions.Settings.Default
+
+					local function NewState(State, callback)
 						local transparencyValues = State and {toggle1Transparency.Enabled, togglerHeadTransparency.Enabled}
 							or {toggle1Transparency.Disabled, togglerHeadTransparency.Disabled}
 						local position = State and TweenSettings.EnabledPosition or TweenSettings.DisabledPosition
@@ -1775,17 +1793,16 @@ function MacLib:Window(Settings)
 						}):Play()
 
 						ToggleFunctions.State = State
+						if callback then
+							callback(togglebool)
+						end
 					end
 
-					local togglebool = ToggleFunctions.Settings.Default
-					ToggleState(togglebool)
+					NewState(togglebool)
 
 					local function Toggle()
 						togglebool = not togglebool
-						ToggleState(togglebool)
-						if ToggleFunctions.Settings.Callback then
-							ToggleFunctions.Settings.Callback(togglebool)
-						end
+						NewState(togglebool, ToggleFunctions.Settings.Callback)
 					end
 
 					toggle1.MouseButton1Click:Connect(Toggle)
@@ -1799,10 +1816,7 @@ function MacLib:Window(Settings)
 						end
 
 						togglebool = State
-						ToggleState(togglebool)
-						if ToggleFunctions.Settings.Callback then 
-							ToggleFunctions.Settings.Callback(togglebool) -- edited
-						end
+						NewState(togglebool, ToggleFunctions.Settings.Callback)
 					end
 					function ToggleFunctions:GetState()
 						return togglebool
@@ -2035,7 +2049,7 @@ function MacLib:Window(Settings)
 						else
 							sliderValue.Text = ValueDisplayMethod(sliderValue)
 						end
-						
+
 						if SliderFunctions.Settings.onInputComplete then
 							SliderFunctions.Settings.onInputComplete(finalValue)
 						end
@@ -2069,8 +2083,7 @@ function MacLib:Window(Settings)
 						slider.Visible = State
 					end
 					function SliderFunctions:UpdateValue(Value)
-						-- SetValue(tonumber(Value), true) -- edited
-						SetValue(tonumber(Value), false)
+						SetValue(tonumber(Value), true)
 					end
 					function SliderFunctions:GetValue()
 						return finalValue
@@ -2338,7 +2351,7 @@ function MacLib:Window(Settings)
 					local isBinding = false
 					local reset = false
 					local binded = KeybindFunctions.Settings.Default
-					
+
 					local function resetFocusState()
 						focused = false
 						isBinding = false
@@ -2357,8 +2370,7 @@ function MacLib:Window(Settings)
 						focused = false
 					end)
 
-					UserInputService.InputBegan:Connect(function(inp, gp)
-						if gp then return end
+					UserInputService.InputBegan:Connect(function(inp)
 						if focused and not isBinding then
 							isBinding = true
 
@@ -3120,7 +3132,7 @@ function MacLib:Window(Settings)
 					prompt.BorderSizePixel = 0
 					prompt.Position = UDim2.fromScale(0.5, 0.5)
 					prompt.Size = UDim2.fromOffset(420, 0)
-					
+
 					local promptUIScale = Instance.new("UIScale")
 					promptUIScale.Name = "BaseUIScale"
 					promptUIScale.Parent = prompt
@@ -4275,7 +4287,7 @@ function MacLib:Window(Settings)
 
 						UpdateSlideFromValue(value)
 						UpdateRingFromHSV(hue, saturation)
-						
+
 						if ColorpickerFunctions.Settings.Callback then
 							task.spawn(function()
 								ColorpickerFunctions.Settings.Callback(ColorpickerFunctions.Color, isAlpha and ColorpickerFunctions.Alpha)
@@ -4628,12 +4640,12 @@ function MacLib:Window(Settings)
 
 			function TabFunctions:InsertConfigSection(Side)
 				local configSection = TabFunctions:Section({ Side = "Left" })
-				
+
 				if isStudio then
 					configSection:Label({Text = "Config system unavailable. (Environment isStudio)"})
 					return "Config system unavailable." 
 				end
-				
+
 				local inputPath = nil
 				local selectedConfig = nil
 
@@ -4730,24 +4742,24 @@ function MacLib:Window(Settings)
 						configSelection:InsertOptions(MacLib:RefreshConfigList())
 					end,
 				})
-				
+
 				local autoloadLabel
-				
+
 				configSection:Button({
 					Name = "Set as autoload",
 					Callback = function()
 						local name = configSelection.Value
 						writefile(MacLib.Folder .. "/settings/autoload.txt", name)
-						autoloadLabel:SetDesc("Autoload config: " .. name)
+						autoloadLabel:UpdateName("Autoload config: " .. name)
 						WindowFunctions:Notify({
 							Title = "Interface",
 							Description = string.format("Set %q as autoload", name),
 						})
 					end,
 				})
-				
+
 				autoloadLabel = configSection:Label({Text = "Autoload config: None"})
-				
+
 				if isfile(MacLib.Folder .. "/settings/autoload.txt") then
 					local name = readfile(MacLib.Folder .. "/settings/autoload.txt")
 					autoloadLabel:UpdateName("Autoload config: " .. name)
@@ -5142,6 +5154,7 @@ function MacLib:Window(Settings)
 		end
 
 		local function dialogOut()
+			if not dialog.Parent then return end
 			dialog.Parent = dialogCanvas
 			canvasOut:Play()
 			scaleOut:Play()
@@ -5208,8 +5221,6 @@ function MacLib:Window(Settings)
 				if v.Callback then
 					v.Callback()
 				end
-
-				dialog.Parent = dialogCanvas
 
 				dialogOut()
 			end)
@@ -5374,7 +5385,7 @@ function MacLib:Window(Settings)
 				}
 			end,
 			Load = function(Flag, data)
-				if MacLib.Options[Flag] and data.state ~= nil then -- edited; checked ~= nil 
+				if MacLib.Options[Flag] and data.state ~= nil then
 					MacLib.Options[Flag]:UpdateState(data.state)
 				end
 			end
@@ -5388,7 +5399,7 @@ function MacLib:Window(Settings)
 				}
 			end,
 			Load = function(Flag, data)
-				if MacLib.Options[Flag] and data.value and MacLib.Options[Flag] ~= data.value then
+				if MacLib.Options[Flag] and data.value then
 					MacLib.Options[Flag]:UpdateValue(data.value)
 				end
 			end
@@ -5402,7 +5413,7 @@ function MacLib:Window(Settings)
 				}
 			end,
 			Load = function(Flag, data)
-				if MacLib.Options[Flag] and data.text and type(data.text) == "string" and MacLib.Options[Flag].text ~= data.text then
+				if MacLib.Options[Flag] and data.text and type(data.text) == "string" then
 					MacLib.Options[Flag]:UpdateText(data.text)
 				end
 			end
@@ -5416,7 +5427,7 @@ function MacLib:Window(Settings)
 				}
 			end,
 			Load = function(Flag, data)
-				if MacLib.Options[Flag] and data.bind and MacLib.Options[Flag].bind ~= data.bind then
+				if MacLib.Options[Flag] and data.bind then
 					MacLib.Options[Flag]:Bind(Enum.KeyCode[data.bind])
 				end
 			end
@@ -5430,7 +5441,7 @@ function MacLib:Window(Settings)
 				}
 			end,
 			Load = function(Flag, data)
-				if MacLib.Options[Flag] and data.value and MacLib.Options[Flag].value ~= data.value then
+				if MacLib.Options[Flag] and data.value then
 					MacLib.Options[Flag]:UpdateSelection(data.value)
 				end
 			end
@@ -5456,7 +5467,7 @@ function MacLib:Window(Settings)
 					return Color3.new(r, g, b)
 				end
 
-				if MacLib.Options[Flag] and data.color and MacLib.Options[Flag].color ~= data.color then
+				if MacLib.Options[Flag] and data.color then
 					MacLib.Options[Flag]:SetColor(HexToColor3(data.color)) 
 					if data.alpha then
 						MacLib.Options[Flag]:SetAlpha(data.alpha)
@@ -5467,8 +5478,8 @@ function MacLib:Window(Settings)
 	}
 
 	local function BuildFolderTree()
-		if isStudio then return "Config system unavailable." end
-		
+		if isStudio or not (isfolder and makefolder) then return "Config system unavailable." end
+
 		local paths = {
 			MacLib.Folder,
 			MacLib.Folder .. "/settings"
@@ -5481,10 +5492,10 @@ function MacLib:Window(Settings)
 			end
 		end
 	end
-	
+
 	function MacLib:LoadAutoLoadConfig()
-		if isStudio then return "Config system unavailable." end
-		
+		if isStudio or not (isfile and readfile) then return "Config system unavailable." end
+
 		if isfile(MacLib.Folder .. "/settings/autoload.txt") then
 			local name = readfile(MacLib.Folder .. "/settings/autoload.txt")
 
@@ -5505,14 +5516,14 @@ function MacLib:Window(Settings)
 
 	function MacLib:SetFolder(Folder)
 		if isStudio then return "Config system unavailable." end
-		
+
 		MacLib.Folder = Folder;
 		BuildFolderTree()
 	end
 
 	function MacLib:SaveConfig(Path)
-		if isStudio then return "Config system unavailable." end
-		
+		if isStudio or not writefile then return "Config system unavailable." end
+
 		if (not Path) then
 			return false, "Please select a config file."
 		end
@@ -5540,8 +5551,8 @@ function MacLib:Window(Settings)
 	end
 
 	function MacLib:LoadConfig(Path)
-		if isStudio then return "Config system unavailable." end
-		
+		if isStudio or not (isfile and readfile) then return "Config system unavailable." end
+
 		if (not Path) then
 			return false, "Please select a config file."
 		end
@@ -5564,9 +5575,9 @@ function MacLib:Window(Settings)
 	end
 
 	function MacLib:RefreshConfigList()
-		if isStudio then return "Config system unavailable." end
-		
-		local list = listfiles(MacLib.Folder .. "/settings")
+		if isStudio or not (isfolder and listfiles) then return "Config system unavailable." end
+
+		local list = (isfolder(MacLib.Folder) and isfolder(MacLib.Folder .. "/settings")) and listfiles(MacLib.Folder .. "/settings") or {}
 
 		local out = {}
 		for i = 1, #list do
