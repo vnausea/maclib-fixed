@@ -2370,7 +2370,8 @@ function MacLib:Window(Settings)
 						focused = false
 					end)
 
-					UserInputService.InputBegan:Connect(function(inp)
+					UserInputService.InputBegan:Connect(function(inp, gp)
+						if gp then return end
 						if focused and not isBinding then
 							isBinding = true
 
